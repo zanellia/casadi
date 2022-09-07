@@ -237,7 +237,7 @@ namespace casadi {
     int *ind2=reinterpret_cast<int*>(iw); iw+=nx_;
     char *vtypes=reinterpret_cast<char*>(iw); iw+=nx_;
 
-    // Greate an empty model
+    // Create an empty model
     GRBmodel *model = nullptr;
     try {
       casadi_int flag = GRBnewmodel(m->env, &model, name_.c_str(), 0,
@@ -260,7 +260,7 @@ namespace casadi {
           // Variable marked as discrete (integer or binary)
           vtype = lb==0 && ub==1 ? GRB_BINARY : GRB_INTEGER;
         } else {
-          // Continious variable
+          // Continuous variable
           vtype = GRB_CONTINUOUS;
         }
         vtypes[i] = vtype;
@@ -478,8 +478,16 @@ namespace casadi {
         if (flag) fill_n(x, nx_, casadi::nan);
       }
 
+      // multipliers associated with bounds are not computed by Gurobi (?)
       if (lam_x) fill_n(lam_x, nx_, casadi::nan);
-      if (lam_a) fill_n(lam_a, na_, casadi::nan);
+
+      if (lam_a) {
+        flag = GRBgetdblattrarray(model, GRB_DBL_ATTR_PI, 0, na_, lam_a);
+        if (flag) fill_n(lam_a, na_, casadi::nan);
+      };
+
+      // flip mulitpliers (Gurobi uses opposite convention)
+      for (int i; i<na_; i++) lam_a[i] = -lam_a[i];
 
       // Free memory
       GRBfreemodel(model);
